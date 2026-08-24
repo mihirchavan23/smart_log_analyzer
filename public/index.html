@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Log Analyzer — Anomaly Intelligence Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-brand">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>Smart Log Analyzer</h1>
+          <p class="subtitle">Deterministic Detection • Persistence • AI Root Cause Analysis</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-quick-generate" class="btn btn-primary">
+          <span class="btn-icon">✨</span> Generate & Ingest (1000 Logs)
+        </button>
+        <button id="btn-run-analyze" class="btn btn-secondary">
+          <span class="btn-icon">🔍</span> Run Detection
+        </button>
+        <button id="btn-refresh" class="btn btn-icon-only" title="Refresh Dashboard">
+          ↻
+        </button>
+      </div>
+    </header>
+
+    <!-- Current Batch Banner (shows after generation) -->
+    <div id="current-batch-banner" class="batch-banner hidden">
+      <div class="batch-banner-content">
+        <div class="batch-banner-item">
+          <span class="banner-label">Latest Batch ID:</span>
+          <span class="banner-val mono-text font-bold" id="banner-batch-id">—</span>
+        </div>
+        <div class="batch-banner-item">
+          <span class="banner-label">Generated:</span>
+          <span class="banner-val" id="banner-batch-generated">0 logs</span>
+        </div>
+        <div class="batch-banner-item">
+          <span class="banner-label">Anomalies Detected:</span>
+          <span class="banner-val text-danger font-bold" id="banner-batch-anomalies">0</span>
+        </div>
+        <div class="batch-banner-item">
+          <span class="banner-label">Batch Rate:</span>
+          <span class="banner-val" id="banner-batch-rate">0.0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Cards Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Total Cumulative Logs</span>
+          <span class="metric-badge badge-blue">SQLite Persistent</span>
+        </div>
+        <div class="metric-value" id="stat-total-logs">0</div>
+        <div class="metric-footer" id="stat-current-batch-footer">Current Batch: 0 logs</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Total Anomalies</span>
+          <span class="metric-badge badge-red">Score ≥ 0.70</span>
+        </div>
+        <div class="metric-value text-danger" id="stat-total-anomalies">0</div>
+        <div class="metric-footer" id="stat-anomaly-rate">0.0% of total traffic</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Normal Traffic</span>
+          <span class="metric-badge badge-green">Score < 0.70</span>
+        </div>
+        <div class="metric-value text-success" id="stat-normal-logs">0</div>
+        <div class="metric-footer" id="stat-normal-rate">100.0% healthy</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Batches Processed</span>
+          <span class="metric-badge badge-purple">Unique IDs</span>
+        </div>
+        <div class="metric-value" id="stat-total-batches">0</div>
+        <div class="metric-footer">No duplicate insertions</div>
+      </div>
+    </section>
+
+    <!-- Charts Row -->
+    <section class="charts-grid">
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Anomaly Trend Over Time</h3>
+          <span class="card-tag">Chronological timestamp buckets</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-timeline" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Anomaly Types Distribution</h3>
+          <span class="card-tag">Classification breakdown</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-types" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Traffic Health Breakdown</h3>
+          <span class="card-tag">Normal vs Anomaly</span>
+        </div>
+        <div class="chart-container donut-container">
+          <canvas id="chart-health" height="180"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Area: Anomalies Explorer -->
+    <section class="explorer-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>Detected Anomalies</h2>
+          <span class="badge-count" id="badge-anomaly-count">0 items</span>
+        </div>
+        <div class="filters-group">
+          <select id="filter-type" class="filter-select">
+            <option value="ALL">All Types</option>
+            <option value="AUTHENTICATION_ABUSE">Authentication Abuse</option>
+            <option value="SERVER_ERROR_BURST">Server Error Burst</option>
+            <option value="LATENCY_SPIKE">Latency Spike</option>
+            <option value="REQUEST_FLOOD">Request Flood</option>
+            <option value="ERROR_PATTERN">Error Pattern</option>
+            <option value="GENERAL_ANOMALY">General Anomaly</option>
+          </select>
+          <input type="text" id="search-input" class="search-input" placeholder="Search IP, endpoint, status...">
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID / Timestamp</th>
+                <th>IP Address</th>
+                <th>Endpoint & Method</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Type</th>
+                <th>Primary Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="anomalies-table-body">
+              <tr>
+                <td colspan="8" class="text-center empty-state">No anomalies loaded. Click "Generate & Ingest" or "Run Detection" to start.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Batches History Section -->
+    <section class="batches-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>Persisted Batches (SQLite)</h2>
+          <span class="badge-count" id="badge-batch-count">0 batches</span>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Batch ID</th>
+                <th>Timestamp</th>
+                <th>Batch Logs</th>
+                <th>Anomalies</th>
+                <th>Anomaly Rate</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="batches-table-body">
+              <tr>
+                <td colspan="6" class="text-center empty-state">No batches recorded in database yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Anomaly Detail & AI Root Cause Modal -->
+  <div id="detail-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span id="modal-type-badge" class="type-pill">AUTHENTICATION_ABUSE</span>
+          <h3 id="modal-title">Anomaly Details</h3>
+        </div>
+        <button id="modal-close" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Score Bar & Top Metrics -->
+        <div class="modal-score-card">
+          <div class="score-display">
+            <span class="score-label">Anomaly Score</span>
+            <span class="score-big" id="modal-score-value">0.85</span>
+          </div>
+          <div class="score-progress-container">
+            <div class="score-progress-bar" id="modal-score-bar" style="width: 85%;"></div>
+            <div class="threshold-line" title="Anomaly Threshold (0.70)"></div>
+          </div>
+          <div class="score-legend">
+            <span>0.0 Normal</span>
+            <span class="text-warning">Threshold: 0.70</span>
+            <span class="text-danger">1.0 Critical</span>
+          </div>
+        </div>
+
+        <!-- Feature Values Normalized Breakdown -->
+        <div class="modal-section">
+          <h4>Normalized Signal Contributions (0 – 1)</h4>
+          <div class="features-grid">
+            <div class="feature-item">
+              <div class="feature-header">
+                <span>IP Request Frequency (30%)</span>
+                <span class="feature-val" id="feat-ip">0.00</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" id="bar-feat-ip"></div></div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-header">
+                <span>Failure / Error Rate (25%)</span>
+                <span class="feature-val" id="feat-failure">0.00</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" id="bar-feat-failure"></div></div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-header">
+                <span>Status Abnormality (20%)</span>
+                <span class="feature-val" id="feat-status">0.00</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" id="bar-feat-status"></div></div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-header">
+                <span>Latency Deviation (15%)</span>
+                <span class="feature-val" id="feat-latency">0.00</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" id="bar-feat-latency"></div></div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-header">
+                <span>Error / Message Rarity (10%)</span>
+                <span class="feature-val" id="feat-error">0.00</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" id="bar-feat-error"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reasons List -->
+        <div class="modal-section">
+          <h4>Detection Reasons</h4>
+          <ul class="reasons-list" id="modal-reasons-list">
+            <li>Reason 1</li>
+          </ul>
+        </div>
+
+        <!-- Evidence Grid -->
+        <div class="modal-section">
+          <h4>Relevant Concrete Evidence</h4>
+          <div class="evidence-grid" id="modal-evidence-grid">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- AI Root Cause Analysis Section -->
+        <div class="modal-section ai-section">
+          <div class="ai-header">
+            <div class="ai-title">
+              <span class="ai-sparkle">🤖</span>
+              <h4>AI Root-Cause Analysis</h4>
+            </div>
+            <button id="btn-trigger-ai" class="btn btn-ai">
+              ✨ Run Root-Cause AI
+            </button>
+          </div>
+
+          <div id="ai-result-card" class="ai-result-card hidden">
+            <div class="ai-provider-tag" id="ai-provider-badge">Provider: Google Gemini</div>
+            
+            <div class="ai-block">
+              <div class="ai-block-title">Summary</div>
+              <p id="ai-summary-text" class="ai-text"></p>
+            </div>
+
+            <div class="ai-block">
+              <div class="ai-block-title">Probable Root Cause</div>
+              <p id="ai-cause-text" class="ai-text font-bold"></p>
+            </div>
+
+            <div class="ai-block">
+              <div class="ai-block-title">Impact & Severity</div>
+              <span id="ai-severity-badge" class="severity-pill">HIGH</span>
+            </div>
+
+            <div class="ai-block">
+              <div class="ai-block-title">Relevant Evidence Used</div>
+              <ul id="ai-evidence-list" class="ai-bullet-list"></ul>
+            </div>
+
+            <div class="ai-block">
+              <div class="ai-block-title">Recommended Remediation Steps</div>
+              <ul id="ai-action-list" class="ai-bullet-list"></ul>
+            </div>
+
+            <div class="ai-meta-footer">
+              <span>Confidence: <strong id="ai-confidence-val">90%</strong></span>
+            </div>
+          </div>
+
+          <div id="ai-loading" class="ai-loading hidden">
+            <div class="spinner"></div>
+            <span>Analyzing incident evidence and formulating root-cause explanation...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modal-close-footer" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

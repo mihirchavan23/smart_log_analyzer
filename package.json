@@ -1,0 +1,17 @@
+{
+  "name": "smart-log-analyzer",
+  "version": "5.0.0",
+  "description": "Smart Log Analyzer: Ingestion, Deterministic Anomaly Detection, SQLite Persistence, Gemini/LLM Root-Cause Analysis, and Monitoring Dashboard",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node test_audit.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.18.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2"
+  }
+}
