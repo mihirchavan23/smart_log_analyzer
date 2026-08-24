@@ -19,7 +19,7 @@ app.use(express.static(publicPath));
 
 // Safe AI provider status (never reveals keys)
 app.get("/api/ai/status", (req, res) => {
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
   const xaiKey = process.env.XAI_API_KEY;
   const configuredProvider = (process.env.AI_PROVIDER || "").toLowerCase().trim();
@@ -43,7 +43,7 @@ app.get("/api/ai/status", (req, res) => {
     provider: activeProvider,
     configured,
     model: activeProvider === "gemini"
-      ? (process.env.GEMINI_MODEL || "gemini-2.0-flash")
+      ? (process.env.GEMINI_MODEL || "gemini-3.6-flash")
       : activeProvider === "openai"
       ? (process.env.OPENAI_MODEL || "gpt-4o-mini")
       : activeProvider === "grok"

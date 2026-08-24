@@ -196,8 +196,9 @@ async function callGemini(apiKey, anomaly) {
     throw new Error("@google/genai SDK not available.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const keyToUse = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
+  const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
   const prompt = `You are an expert SRE and Security Operations Center (SOC) analyst. Analyze the following detected log anomaly and provide a structured root-cause explanation.
 
@@ -226,7 +227,11 @@ Return ONLY a valid JSON object with these exact keys:
     },
   });
 
-  const responseText = response.text;
+  let responseText = (response.text || "").trim();
+  if (responseText.startsWith("```")) {
+    responseText = responseText.replace(/^```json|^```/, "").replace(/```$/, "").trim();
+  }
+
   const parsed = JSON.parse(responseText);
   return normalizeAndValidateExplanation(parsed, `Google Gemini (${modelName})`);
 }
@@ -351,16 +356,17 @@ async function explainAnomaly(anomaly) {
 
   const anomalyId = anomaly.id || `log-${anomaly.log_index || 0}`;
 
-  // Check persistent storage cache
-  const cached = getAiExplanation(anomalyId);
-  if (cached) {
-    return cached;
-  }
-
   const configuredProvider = (process.env.AI_PROVIDER || "").toLowerCase().trim();
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
   const xaiKey = process.env.XAI_API_KEY;
+  const hasLiveKey = Boolean(geminiKey || openaiKey || xaiKey);
+
+  // Check persistent storage cache. If cached explanation was a fallback but a live API key is now present, bypass cache!
+  const cached = getAiExplanation(anomalyId);
+  if (cached && (cached.ai_status !== "fallback" || !hasLiveKey)) {
+    return cached;
+  }
 
   let explanation = null;
 
