@@ -43,7 +43,7 @@ app.get("/api/ai/status", (req, res) => {
     provider: activeProvider,
     configured,
     model: activeProvider === "gemini"
-      ? (process.env.GEMINI_MODEL || "gemini-2.5-flash")
+      ? (process.env.GEMINI_MODEL || "gemini-2.0-flash")
       : activeProvider === "openai"
       ? (process.env.OPENAI_MODEL || "gpt-4o-mini")
       : activeProvider === "grok"

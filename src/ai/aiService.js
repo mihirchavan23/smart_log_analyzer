@@ -10,6 +10,8 @@
  * Provider selection: AI_PROVIDER=gemini | openai | grok
  */
 
+require("dotenv").config();
+
 const { saveAiExplanation, getAiExplanation } = require("../storage/db");
 
 let GoogleGenAI = null;
@@ -195,7 +197,7 @@ async function callGemini(apiKey, anomaly) {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
   const prompt = `You are an expert SRE and Security Operations Center (SOC) analyst. Analyze the following detected log anomaly and provide a structured root-cause explanation.
 

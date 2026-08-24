@@ -805,3 +805,9 @@ body {
   display: flex;
   justify-content: flex-end;
 }
+
+/* Utility hidden class */
+.hidden {
+  display: none !important;
+}
+

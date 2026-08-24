@@ -66,6 +66,7 @@ const btnTriggerAi = document.getElementById("btn-trigger-ai");
 const aiResultCard = document.getElementById("ai-result-card");
 const aiLoading = document.getElementById("ai-loading");
 const aiProviderBadge = document.getElementById("ai-provider-badge");
+const aiNoticeBox = document.getElementById("ai-notice-box");
 const aiSummaryText = document.getElementById("ai-summary-text");
 const aiCauseText = document.getElementById("ai-cause-text");
 const aiSeverityBadge = document.getElementById("ai-severity-badge");
@@ -375,6 +376,13 @@ btnTriggerAi.addEventListener("click", async () => {
     });
     const data = await res.json();
     const exp = data.explanation || {};
+
+    if (exp.message && aiNoticeBox) {
+      aiNoticeBox.textContent = `Notice: ${exp.message}`;
+      aiNoticeBox.classList.remove("hidden");
+    } else if (aiNoticeBox) {
+      aiNoticeBox.classList.add("hidden");
+    }
 
     aiProviderBadge.textContent = `Provider: ${exp.provider || "AI Engine"}`;
     aiSummaryText.textContent = exp.summary || "No summary available.";
